@@ -1,9 +1,14 @@
 'use strict';
 const Nightmare = require('nightmare');
 const cheerio = require('cheerio');
+const { promisify } = require('util');
+const fs = require('fs');
+const writeFile = promisify(fs.writeFile);
+const readFile = promisify(fs.readFile);
+const { join } = require('path');
 // const Joi = require('@hapi/joi');
 
-const nightmare = Nightmare({ show: true })
+const nightmare = Nightmare(/* { show: true } */);
 
 const internals = {};
 // internals.companyDataSchema = Joi.array();
@@ -98,15 +103,65 @@ internals.init = async function(){
                         break;
                 }
             })
-            console.log(singleObj);
+            report.push(singleObj);
         });
 
         // Validate
         // internals.companyDataSchema.validate(report);
 
+        await writeFile(join(__dirname, 'store', `${internals.getToday()}.json`), JSON.stringify(report, null, 4));
+
     } catch (err){
         console.log(err.message);
     }
 }
+internals.getToday = function(){
+    let today = new Date();
+    let dd = today.getDate();
+    let mm = today.getMonth() + 1; //January is 0!
 
-internals.init();
+    let yyyy = today.getFullYear();
+    if (dd < 10) {
+    dd = '0' + dd;
+    } 
+    if (mm < 10) {
+    mm = '0' + mm;
+    } 
+    return `${yyyy}-${mm}-${dd}`;
+}
+internals.pullData = function(request, h){
+    const { date } = request.params;
+    return readFile(join(__dirname, 'store', `${date}.json`));
+}
+
+module.exports = function(server){
+    server.route({
+        method: 'GET',
+        path: '/ping',
+        handler: (request, h) => {
+
+            return 'pong!!';
+        }
+    });
+    server.route({
+        method: 'GET',
+        path: '/dig',
+        handler: (request, h) => {
+            internals.init();
+            return 'Digging is in progress, call /pull after 30 sec!';
+        }
+    });
+    server.route({
+        method: 'GET',
+        path: '/pull/{date}',
+        handler: internals.pullData
+    });
+    server.route({
+        method: 'GET',
+        path: '/',
+        handler: (request, h) => {
+
+            return 'Hey, I am dggr!';
+        }
+    });
+}
