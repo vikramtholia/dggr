@@ -8,7 +8,7 @@ const { join } = require('path');
 const Joi = require('@hapi/joi');
 const { sendEmail } =  require('./lib/email');
 
-const nightmare = Nightmare({ show: true });
+const nightmare = Nightmare(/* { show: true } */);
 
 const internals = {};
 internals.companyDataSchema = Joi.array().items(Joi.object({ 
@@ -116,4 +116,4 @@ internals.init = async function(){
     }
 }
 
-internals.init();
+module.exports.init = internals.init;
