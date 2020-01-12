@@ -4,27 +4,26 @@ const cheerio = require('cheerio');
 const { promisify } = require('util');
 const fs = require('fs');
 const writeFile = promisify(fs.writeFile);
-const readFile = promisify(fs.readFile);
 const { join } = require('path');
-// const Joi = require('@hapi/joi');
+const Joi = require('@hapi/joi');
+const { sendEmail } =  require('./lib/email');
 
-const nightmare = Nightmare(/* { show: true } */);
+const nightmare = Nightmare({ show: true });
 
 const internals = {};
-// internals.companyDataSchema = Joi.array();
-// Joi.array().items(Joi.object({ 
-//     seq: Joi.number().integer().min(0).required(),
-//     companyName: Joi.string().required(),
-//     companyShort: Joi.string().required(),
-//     mCap: Joi.number().min(0).required(),
-//     closePrice: Joi.number().min(0).required(),
-//     techRating: Joi.number().integer().min(0).max(99).required(),
-//     fundaRating: Joi.number().integer().min(0).max(99).required(),
-//     growthRating: Joi.number().integer().min(0).max(99).required(),
-//     qualityRating: Joi.number().integer().min(0).max(99).required(),
-//     finalRating: Joi.number().integer().min(0).max(99).required(),
-//     longTrend: Joi.valid('DOWN', 'UP').required()
-// }));
+internals.companyDataSchema = Joi.array().items(Joi.object({ 
+    seq: Joi.number().integer().min(0).required(),
+    companyName: Joi.string().required(),
+    companyShort: Joi.string().required(),
+    mCap: Joi.number().min(0).required(),
+    closePrice: Joi.number().min(0).required(),
+    techRating: Joi.number().integer().min(0).max(99).required(),
+    fundaRating: Joi.number().integer().min(0).max(99).required(),
+    growthRating: Joi.number().integer().min(0).max(99).required(),
+    qualityRating: Joi.number().integer().min(0).max(99).required(),
+    finalRating: Joi.number().integer().min(0).max(99).required(),
+    longTrend: Joi.valid('DOWN', 'UP').required()
+}));
 
 internals.init = async function(){
     try {
@@ -107,61 +106,14 @@ internals.init = async function(){
         });
 
         // Validate
-        // internals.companyDataSchema.validate(report);
+        // await Joi.validate(report, internals.companyDataSchema);
 
-        await writeFile(join(__dirname, 'store', `${internals.getToday()}.json`), JSON.stringify(report, null, 4));
+        await writeFile(join(__dirname, 'store', `${(new Date()).getTime()}.json`), JSON.stringify(report, null, 4));
+        await sendEmail(htmlData);
 
     } catch (err){
         console.log(err.message);
     }
 }
-internals.getToday = function(){
-    let today = new Date();
-    let dd = today.getDate();
-    let mm = today.getMonth() + 1; //January is 0!
 
-    let yyyy = today.getFullYear();
-    if (dd < 10) {
-    dd = '0' + dd;
-    } 
-    if (mm < 10) {
-    mm = '0' + mm;
-    } 
-    return `${yyyy}-${mm}-${dd}`;
-}
-internals.pullData = function(request, h){
-    const { date } = request.params;
-    return readFile(join(__dirname, 'store', `${date}.json`));
-}
-
-module.exports = function(server){
-    server.route({
-        method: 'GET',
-        path: '/ping',
-        handler: (request, h) => {
-
-            return 'pong!!';
-        }
-    });
-    server.route({
-        method: 'GET',
-        path: '/dig',
-        handler: (request, h) => {
-            internals.init();
-            return 'Digging is in progress, call /pull after 30 sec!';
-        }
-    });
-    server.route({
-        method: 'GET',
-        path: '/pull/{date}',
-        handler: internals.pullData
-    });
-    server.route({
-        method: 'GET',
-        path: '/',
-        handler: (request, h) => {
-
-            return 'Hey, I am dggr!';
-        }
-    });
-}
+internals.init();
