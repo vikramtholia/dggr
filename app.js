@@ -5,8 +5,7 @@ const Hapi = require('@hapi/hapi');
 const init = async () => {
 
     const server = Hapi.server({
-        port: 80,
-        host: 'https://dggr.herokuapp.com'
+        port: process.env.PORT || 5000
     });
 
     require('./index')(server);
